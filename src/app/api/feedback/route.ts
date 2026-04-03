@@ -17,13 +17,27 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = (await request.json()) as { text?: string };
-    const text = payload.text ?? "";
-    const item = await appendFeedback(text);
+    const payload = (await request.json()) as {
+      tags?: string[];
+      tag?: string;
+      comment?: string;
+      imageDataUrl?: string;
+    };
+    const item = await appendFeedback({
+      tags: payload.tags,
+      tag: payload.tag,
+      comment: payload.comment ?? "",
+      imageDataUrl: payload.imageDataUrl,
+    });
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {
     const message = (error as Error).message;
-    const status = message.includes("empty") || message.includes("long") ? 400 : 500;
+    const isClientError =
+      message.includes("required") ||
+      message.includes("too long") ||
+      message.includes("too large") ||
+      message.includes("Image must");
+    const status = isClientError ? 400 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

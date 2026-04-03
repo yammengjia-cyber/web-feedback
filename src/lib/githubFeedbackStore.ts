@@ -1,10 +1,14 @@
 import { Buffer } from "node:buffer";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { normalizeFeedbackList } from "@/lib/normalizeFeedback";
+import { parseTagsFromPayload } from "@/lib/parseTags";
 import { FeedbackItem } from "@/types/feedback";
 
 const DEFAULT_FILE_PATH = "web-feedback-data/feedback.json";
 const MAX_ITEMS = 20;
+const MAX_COMMENT_LEN = 500;
+const MAX_IMAGE_DATA_URL_CHARS = 480_000;
 
 type RepoFileResponse = {
   sha: string;
@@ -46,7 +50,7 @@ async function readLocalList(): Promise<FeedbackItem[]> {
   try {
     const content = await readFile(localPath, "utf8");
     const parsed = JSON.parse(content) as FeedbackItem[];
-    return parsed
+    return normalizeFeedbackList(parsed)
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
       .slice(0, MAX_ITEMS);
   } catch {
@@ -102,7 +106,7 @@ export async function getFeedbackList(): Promise<FeedbackItem[]> {
 
   const file = (await response.json()) as RepoFileResponse;
   const parsed = JSON.parse(decodeContent(file.content)) as FeedbackItem[];
-  return parsed
+  return normalizeFeedbackList(parsed)
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .slice(0, MAX_ITEMS);
 }
@@ -121,22 +125,52 @@ async function readRawFile(): Promise<{ sha?: string; list: FeedbackItem[] }> {
 
   const file = (await response.json()) as RepoFileResponse;
   const parsed = JSON.parse(decodeContent(file.content)) as FeedbackItem[];
-  return { sha: file.sha, list: parsed };
+  return { sha: file.sha, list: normalizeFeedbackList(parsed) };
 }
 
-export async function appendFeedback(text: string): Promise<FeedbackItem> {
-  const cleaned = text.trim();
-  if (!cleaned) {
-    throw new Error("Feedback cannot be empty.");
+export type NewFeedbackInput = {
+  tags?: string[];
+  tag?: string;
+  comment: string;
+  imageDataUrl?: string;
+};
+
+function validateImageDataUrl(url: string) {
+  if (
+    !/^data:image\/(jpeg|jpg|png|webp|heic|heif)(-sequence)?;base64,/i.test(url)
+  ) {
+    throw new Error("Image must be JPEG, PNG, WebP, or HEIC/HEIF (iPhone photos).");
   }
-  if (cleaned.length > 300) {
-    throw new Error("Feedback is too long.");
+  if (url.length > MAX_IMAGE_DATA_URL_CHARS) {
+    throw new Error("Image is too large. Try a smaller photo.");
+  }
+}
+
+export async function appendFeedback(input: NewFeedbackInput): Promise<FeedbackItem> {
+  const tags = parseTagsFromPayload(input.tags, input.tag);
+  const comment = input.comment.trim();
+  if (tags.length === 0) {
+    throw new Error("At least one tag is required.");
+  }
+  if (!comment) {
+    throw new Error("Comment is required.");
+  }
+  if (comment.length > MAX_COMMENT_LEN) {
+    throw new Error("Comment is too long.");
+  }
+
+  let imageDataUrl: string | undefined;
+  if (input.imageDataUrl?.trim()) {
+    validateImageDataUrl(input.imageDataUrl.trim());
+    imageDataUrl = input.imageDataUrl.trim();
   }
 
   const newItem: FeedbackItem = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    text: cleaned,
+    tags,
+    comment,
     createdAt: new Date().toISOString(),
+    ...(imageDataUrl ? { imageDataUrl } : {}),
   };
 
   if (!hasGithubConfig()) {
