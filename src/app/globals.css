@@ -84,6 +84,15 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
+/* Newest feedback (first in list): soft yellow outline */
+.cloud-body.cloud-latest {
+  border-color: rgba(255, 218, 130, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(255, 230, 160, 0.75),
+    0 12px 28px rgba(68, 105, 138, 0.12),
+    inset 0 1px 0 rgba(255, 252, 235, 0.9);
+}
+
 .cloud-tags {
   display: flex;
   flex-wrap: wrap;
@@ -163,6 +172,53 @@ body {
   text-align: center;
   font-size: 0.8rem;
   color: #557da7;
+}
+
+.thanks-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: none;
+}
+
+.thanks-card {
+  max-width: min(90vw, 360px);
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(255, 218, 130, 0.55);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(255, 230, 170, 0.35),
+    0 16px 40px rgba(44, 79, 115, 0.16);
+  animation: thanks-toast 3s ease-out forwards;
+}
+
+@keyframes thanks-toast {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  11% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px) scale(1);
+  }
 }
 
 .modal-backdrop {

@@ -22,6 +22,8 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
+  const [thanksShow, setThanksShow] = useState(false);
+  const [thanksKey, setThanksKey] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -120,7 +122,9 @@ export default function Home() {
       setItems((prev) => [data.item!, ...prev].slice(0, 20));
       setNewlyAddedId(data.item.id);
       closeModal();
-      setStatus("Uploaded. Your cloud is floating up.");
+      setStatus("");
+      setThanksKey((k) => k + 1);
+      setThanksShow(true);
       window.setTimeout(() => setNewlyAddedId(null), 1600);
     } catch (error) {
       setStatus((error as Error).message);
@@ -133,7 +137,7 @@ export default function Home() {
     <main className="sky-page">
       <div className="sun-glow" aria-hidden />
       <section className="sky-field" aria-label="Floating feedback clouds">
-        {layeredItems.map((item) => (
+        {layeredItems.map((item, index) => (
           <div
             key={item.id}
             className={["cloud-anchor", `lane-${item.lane}`, `depth-${item.depth}`].join(" ")}
@@ -149,7 +153,11 @@ export default function Home() {
               }
             >
               <article className="cloud">
-                <div className="cloud-body">
+                <div
+                  className={["cloud-body", index === 0 ? "cloud-latest" : ""]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
                   <div className="cloud-tags" aria-label="Tags">
                     {item.tags.map((t) => (
                       <span key={`${item.id}-${t}`} className="cloud-tag">
@@ -180,6 +188,22 @@ export default function Home() {
         </div>
         {status ? <p className="status">{status}</p> : null}
       </section>
+
+      {thanksShow ? (
+        <div className="thanks-layer" aria-live="polite">
+          <div
+            key={thanksKey}
+            className="thanks-card"
+            onAnimationEnd={(e) => {
+              if (e.animationName.includes("thanks-toast")) {
+                setThanksShow(false);
+              }
+            }}
+          >
+            Thank you for your feedback — it helps us improve the project.
+          </div>
+        </div>
+      ) : null}
 
       {modalOpen ? (
         <div
