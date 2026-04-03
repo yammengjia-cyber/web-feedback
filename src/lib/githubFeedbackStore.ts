@@ -8,7 +8,8 @@ import { FeedbackItem } from "@/types/feedback";
 const DEFAULT_FILE_PATH = "web-feedback-data/feedback.json";
 const MAX_ITEMS = 20;
 const MAX_COMMENT_LEN = 500;
-const MAX_IMAGE_DATA_URL_CHARS = 480_000;
+/** Base64 data URL 字符上限（约对应 2.5–2.8MB 原图）；受 Vercel 等请求体 ~4.5MB 限制 */
+const MAX_IMAGE_DATA_URL_CHARS = 3_800_000;
 
 type RepoFileResponse = {
   sha: string;
@@ -170,7 +171,7 @@ function validateImageDataUrl(url: string) {
     throw new Error("Image must be JPEG, PNG, WebP, or HEIC/HEIF (iPhone photos).");
   }
   if (url.length > MAX_IMAGE_DATA_URL_CHARS) {
-    throw new Error("Image is too large. Try a smaller photo.");
+    throw new Error("Image is too large. Try a photo under about 2.8 MB.");
   }
 }
 

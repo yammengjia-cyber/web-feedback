@@ -61,6 +61,29 @@ body {
   overflow: hidden;
 }
 
+/* 三行独立容器：每行自己的漂移节奏，避免同列多朵云叠在同一相位 */
+.sky-lane {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+}
+
+.sky-lane-0 {
+  top: 14%;
+  z-index: 1;
+}
+
+.sky-lane-1 {
+  top: 26%;
+  z-index: 2;
+}
+
+.sky-lane-2 {
+  top: 38%;
+  z-index: 1;
+}
+
 /* Scale/opacity on anchor; drift only on inner so transforms do not fight */
 .cloud-anchor {
   position: absolute;
@@ -143,11 +166,6 @@ body {
   animation: rise 1.6s ease-out;
 }
 
-/* 固定三行：仅控制「行与行」的垂直间距（lane top），与标签行高无关 */
-.lane-0 { top: 14%; }
-.lane-1 { top: 26%; }
-.lane-2 { top: 38%; }
-
 .depth-0 {
   opacity: 0.96;
   transform: translate(calc(var(--anchor-x, 0px) * 1.5), var(--anchor-y, 0px));
@@ -165,7 +183,7 @@ body {
   flex-shrink: 0;
   padding: 0.35rem 1rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, rgba(245, 252, 255, 0), rgba(245, 252, 255, 0.92) 35%);
-  transform: none;
+  transform: translateY(-10px);
 }
 
 .hint {
@@ -469,10 +487,17 @@ body {
 }
 
 @media (max-width: 720px) {
-  /* 手机端三行更贴紧（行与行之间） */
-  .lane-0 { top: 12%; }
-  .lane-1 { top: 24%; }
-  .lane-2 { top: 36%; }
+  .sky-lane-0 {
+    top: 12%;
+  }
+
+  .sky-lane-1 {
+    top: 24%;
+  }
+
+  .sky-lane-2 {
+    top: 36%;
+  }
 
   .cloud-body {
     padding: 0.48rem 0.85rem 0.52rem;

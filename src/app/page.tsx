@@ -5,7 +5,8 @@ import { CSSProperties } from "react";
 import { parseTagsFromPayload } from "@/lib/parseTags";
 import { FeedbackItem } from "@/types/feedback";
 
-const MAX_FILE_BYTES = 2_400_000;
+/** ~2.8 MB；Base64 后体积更大，需与 MAX_IMAGE_DATA_URL_CHARS、托管商请求体上限一致 */
+const MAX_FILE_BYTES = 2_800_000;
 
 function isLikelyPhotoFile(file: File): boolean {
   if (file.type.startsWith("image/")) return true;
@@ -40,16 +41,29 @@ export default function Home() {
   }, []);
 
   const layeredItems = useMemo(() => {
+    const perLane = Math.max(Math.ceil(items.length / 3), 1);
+    const latestId = items[0]?.id;
     return items.map((item, index) => {
       const idSum = item.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
       const lane = index % 3;
       const depth = index % 3;
-      const driftSec = 17 + (idSum % 8) * 1.05;
+      const slotInLane = Math.floor(index / 3);
       const phase01 = ((index * 17 + idSum * 5) % 997) / 997;
-      const delay = -(phase01 * driftSec);
+      const driftBaseByLane = [18.5, 24.2, 20.4][lane];
+      const driftSec = driftBaseByLane + (idSum % 6) * 0.65;
+      const delay = -((slotInLane + phase01 * 0.92) / perLane) * driftSec;
       const staggerY = ((index * 5 + idSum) % 5) - 2;
       const nudgeX = ((idSum + index * 2) % 5) - 2;
-      return { ...item, lane, depth, delay, driftSec, staggerY, nudgeX };
+      return {
+        ...item,
+        lane,
+        depth,
+        delay,
+        driftSec,
+        staggerY,
+        nudgeX,
+        isLatest: item.id === latestId,
+      };
     });
   }, [items]);
 
@@ -80,7 +94,7 @@ export default function Home() {
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      setStatus("Image is too large. Try under ~2.4 MB.");
+      setStatus("Image is too large. Try under about 2.8 MB.");
       return;
     }
     const reader = new FileReader();
@@ -142,44 +156,50 @@ export default function Home() {
     <main className="sky-page">
       <div className="sun-glow" aria-hidden />
       <section className="sky-field" aria-label="Floating feedback clouds">
-        {layeredItems.map((item, index) => (
-          <div
-            key={item.id}
-            className={["cloud-anchor", `lane-${item.lane}`, `depth-${item.depth}`].join(" ")}
-            style={
-              {
-                "--anchor-y": `${item.staggerY}px`,
-                "--anchor-x": `${item.nudgeX}px`,
-              } as CSSProperties
-            }
-          >
-            <div
-              className={["cloud-drift", item.id === newlyAddedId ? "rising" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              style={
-                {
-                  "--drift-delay": `${item.delay}s`,
-                  "--drift-duration": `${item.driftSec}s`,
-                } as CSSProperties
-              }
-            >
-              <article className="cloud">
+        {[0, 1, 2].map((lane) => (
+          <div key={lane} className={`sky-lane sky-lane-${lane}`}>
+            {layeredItems
+              .filter((row) => row.lane === lane)
+              .map((item) => (
                 <div
-                  className={["cloud-body", index === 0 ? "cloud-latest" : ""]
-                    .filter(Boolean)
-                    .join(" ")}
+                  key={item.id}
+                  className={["cloud-anchor", `depth-${item.depth}`].join(" ")}
+                  style={
+                    {
+                      "--anchor-y": `${item.staggerY}px`,
+                      "--anchor-x": `${item.nudgeX}px`,
+                    } as CSSProperties
+                  }
                 >
-                  <div className="cloud-tags" aria-label="Tags">
-                    {item.tags.map((t) => (
-                      <span key={`${item.id}-${t}`} className="cloud-tag">
-                        {t}
-                      </span>
-                    ))}
+                  <div
+                    className={["cloud-drift", item.id === newlyAddedId ? "rising" : ""]
+                      .filter(Boolean)
+                      .join(" ")}
+                    style={
+                      {
+                        "--drift-delay": `${item.delay}s`,
+                        "--drift-duration": `${item.driftSec}s`,
+                      } as CSSProperties
+                    }
+                  >
+                    <article className="cloud">
+                      <div
+                        className={["cloud-body", item.isLatest ? "cloud-latest" : ""]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        <div className="cloud-tags" aria-label="Tags">
+                          {item.tags.map((t) => (
+                            <span key={`${item.id}-${t}`} className="cloud-tag">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </article>
                   </div>
                 </div>
-              </article>
-            </div>
+              ))}
           </div>
         ))}
       </section>
