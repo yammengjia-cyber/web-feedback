@@ -133,6 +133,7 @@ body {
 .feedback-bar-wrap {
   padding: 0.8rem 1rem 1.2rem;
   background: linear-gradient(180deg, rgba(245, 252, 255, 0), rgba(245, 252, 255, 0.92) 35%);
+  transform: translateY(-20px);
 }
 
 .hint {
