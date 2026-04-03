@@ -127,9 +127,9 @@ body {
 .cloud-tag {
   display: inline-block;
   max-width: 100%;
-  padding: 0.1rem 0.55rem;
+  padding: 0.12rem 0.66rem;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.96rem;
   font-weight: 600;
   line-height: 1.08;
   letter-spacing: 0.02em;
@@ -143,10 +143,10 @@ body {
   animation: rise 1.6s ease-out;
 }
 
-/* 固定三行，行距收紧（仅 index % 3 使用 0–2） */
-.lane-0 { top: 12%; }
-.lane-1 { top: 30%; }
-.lane-2 { top: 48%; }
+/* 固定三行：仅控制「行与行」的垂直间距（lane top），与标签行高无关 */
+.lane-0 { top: 14%; }
+.lane-1 { top: 26%; }
+.lane-2 { top: 38%; }
 
 .depth-0 {
   opacity: 0.96;
@@ -171,7 +171,7 @@ body {
 .hint {
   margin: 0 0 0.28rem;
   text-align: center;
-  font-size: 0.76rem;
+  font-size: 0.912rem;
   color: var(--hint);
 }
 
@@ -185,11 +185,11 @@ body {
   border-radius: 999px;
   background: var(--button);
   color: #fff;
-  padding: 0.62rem 1.5rem;
-  font-size: 0.85rem;
+  padding: 0.806rem 1.95rem;
+  font-size: 1.105rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(120, 174, 222, 0.35);
+  box-shadow: 0 10px 26px rgba(120, 174, 222, 0.35);
 }
 
 .uploading-trigger:hover {
@@ -203,7 +203,7 @@ body {
 .status {
   margin: 0.28rem 0 0;
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.864rem;
   color: #557da7;
 }
 
@@ -459,7 +459,7 @@ body {
 
 @keyframes rise {
   0% {
-    transform: translateY(22px);
+    transform: translateY(26px);
     opacity: 0.25;
   }
   100% {
@@ -469,17 +469,18 @@ body {
 }
 
 @media (max-width: 720px) {
-  .lane-0 { top: 10%; }
-  .lane-1 { top: 28%; }
-  .lane-2 { top: 46%; }
+  /* 手机端三行更贴紧（行与行之间） */
+  .lane-0 { top: 12%; }
+  .lane-1 { top: 24%; }
+  .lane-2 { top: 36%; }
 
   .cloud-body {
     padding: 0.48rem 0.85rem 0.52rem;
   }
 
   .cloud-tag {
-    font-size: 0.8rem;
-    padding: 0.08rem 0.48rem;
+    font-size: 0.96rem;
+    padding: 0.1rem 0.58rem;
   }
 
   .sky-field {
