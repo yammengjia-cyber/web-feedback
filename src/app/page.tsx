@@ -42,12 +42,13 @@ export default function Home() {
   const layeredItems = useMemo(() => {
     return items.map((item, index) => {
       const idSum = item.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-      const lane = index % 5;
+      const lane = index % 3;
       const depth = index % 3;
-      const delay = ((index * 1.41 + idSum % 19) % 26) * 0.55;
-      const driftSec = 21 + (idSum % 11) * 1.15;
-      const staggerY = ((index * 7 + idSum) % 13) - 6;
-      const nudgeX = ((idSum + index * 3) % 11) - 5;
+      const driftSec = 17 + (idSum % 8) * 1.05;
+      const phase01 = ((index * 17 + idSum * 5) % 997) / 997;
+      const delay = -(phase01 * driftSec);
+      const staggerY = ((index * 5 + idSum) % 5) - 2;
+      const nudgeX = ((idSum + index * 2) % 5) - 2;
       return { ...item, lane, depth, delay, driftSec, staggerY, nudgeX };
     });
   }, [items]);

@@ -44,14 +44,18 @@ body {
 
 .sky-field {
   position: relative;
-  padding: 5.5rem 1rem 1rem;
+  padding: 5rem 0.5rem 0.75rem;
+  min-height: clamp(200px, 30vh, 320px);
 }
 
 /* Scale/opacity on anchor; drift only on inner so transforms do not fight */
 .cloud-anchor {
   position: absolute;
+  left: 0;
+  width: 100%;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
+  pointer-events: none;
 }
 
 .cloud-drift {
@@ -66,13 +70,13 @@ body {
 
 .cloud {
   width: max-content;
-  max-width: min(88vw, 360px);
+  max-width: min(92vw, 540px);
   min-width: 0;
 }
 
 /* Single silhouette: one gradient across the whole cloud */
 .cloud-body {
-  padding: 0.62rem 0.95rem 0.65rem;
+  padding: 0.95rem 1.45rem 1rem;
   border-radius: 999px;
   text-align: center;
   background: linear-gradient(
@@ -84,7 +88,7 @@ body {
   );
   border: 1px solid rgba(255, 255, 255, 0.95);
   box-shadow:
-    0 12px 28px rgba(68, 105, 138, 0.12),
+    0 18px 42px rgba(68, 105, 138, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
@@ -93,7 +97,7 @@ body {
   border-color: rgba(255, 224, 160, 0.5);
   box-shadow:
     0 0 0 1px rgba(255, 236, 190, 0.42),
-    0 12px 28px rgba(68, 105, 138, 0.12),
+    0 18px 42px rgba(68, 105, 138, 0.12),
     inset 0 1px 0 rgba(255, 253, 242, 0.75);
 }
 
@@ -102,19 +106,19 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 0.18rem 0.22rem;
-  row-gap: 0.16rem;
-  max-width: min(82vw, 320px);
+  gap: 0.28rem 0.34rem;
+  row-gap: 0.24rem;
+  max-width: min(88vw, 480px);
 }
 
 .cloud-tag {
   display: inline-block;
   max-width: 100%;
-  padding: 0.14rem 0.52rem;
+  padding: 0.22rem 0.8rem;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 1.02rem;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.2;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--cloud-tag-text);
@@ -126,26 +130,22 @@ body {
   animation: rise 1.6s ease-out;
 }
 
-.lane-0 { top: 10%; }
-.lane-1 { top: 22%; }
-.lane-2 { top: 34%; }
-.lane-3 { top: 46%; }
-.lane-4 { top: 58%; }
+/* 固定三行，行距收紧（仅 index % 3 使用 0–2） */
+.lane-0 { top: 12%; }
+.lane-1 { top: 30%; }
+.lane-2 { top: 48%; }
 
 .depth-0 {
-  left: -40%;
   opacity: 0.96;
-  transform: translate(var(--anchor-x, 0px), var(--anchor-y, 0px));
+  transform: translate(calc(var(--anchor-x, 0px) * 1.5), var(--anchor-y, 0px));
 }
 .depth-1 {
-  left: -26%;
-  opacity: 0.88;
-  transform: translate(var(--anchor-x, 0px), var(--anchor-y, 0px)) scale(0.95);
+  opacity: 0.9;
+  transform: translate(calc(var(--anchor-x, 0px) * 1.5), var(--anchor-y, 0px)) scale(0.97);
 }
 .depth-2 {
-  left: -12%;
-  opacity: 0.8;
-  transform: translate(var(--anchor-x, 0px), var(--anchor-y, 0px)) scale(0.9);
+  opacity: 0.84;
+  transform: translate(calc(var(--anchor-x, 0px) * 1.5), var(--anchor-y, 0px)) scale(0.94);
 }
 
 .feedback-bar-wrap {
@@ -435,23 +435,36 @@ body {
 }
 
 @keyframes drift {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(160vw); }
+  0% {
+    transform: translateX(-100vw);
+  }
+  100% {
+    transform: translateX(115vw);
+  }
 }
 
 @keyframes rise {
-  0% { transform: translateY(26px); opacity: 0.25; }
-  100% { transform: translateY(0); opacity: 1; }
+  0% {
+    transform: translateY(39px);
+    opacity: 0.25;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @media (max-width: 720px) {
-  .lane-0 { top: 8%; }
-  .lane-1 { top: 20%; }
-  .lane-2 { top: 32%; }
-  .lane-3 { top: 44%; }
-  .lane-4 { top: 56%; }
+  .lane-0 { top: 10%; }
+  .lane-1 { top: 28%; }
+  .lane-2 { top: 46%; }
 
   .cloud-body {
-    padding: 0.6rem 0.9rem 0.65rem;
+    padding: 0.85rem 1.25rem 0.9rem;
+  }
+
+  .cloud-tag {
+    font-size: 0.92rem;
+    padding: 0.18rem 0.68rem;
   }
 }
