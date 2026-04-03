@@ -40,6 +40,31 @@ function hasGithubConfig() {
   );
 }
 
+/**
+ * Vercel production/preview runs on a read-only filesystem. Local JSON writes
+ * throw EROFS unless we use the GitHub API.
+ */
+function isVercelReadonlyRuntime() {
+  if (process.env.VERCEL === "1" && process.env.VERCEL_ENV !== "development") {
+    return true;
+  }
+  // Some runtimes omit VERCEL; serverless deploy cwd is read-only on Vercel.
+  try {
+    return process.cwd().includes("/var/task");
+  } catch {
+    return false;
+  }
+}
+
+const MISSING_GITHUB_ON_VERCEL_MSG =
+  "Server storage is not configured. In Vercel → Project → Settings → Environment Variables, add GITHUB_TOKEN, GITHUB_REPO_OWNER, and GITHUB_REPO_NAME (and optionally GITHUB_REPO_BRANCH, FEEDBACK_FILE_PATH), then redeploy.";
+
+function assertCanPersistWithoutGithub() {
+  if (isVercelReadonlyRuntime()) {
+    throw new Error(MISSING_GITHUB_ON_VERCEL_MSG);
+  }
+}
+
 function getLocalFilePath() {
   const filePath = process.env.FEEDBACK_FILE_PATH || DEFAULT_FILE_PATH;
   return path.join(process.cwd(), filePath);
@@ -89,6 +114,9 @@ function encodeContent(text: string): string {
 
 export async function getFeedbackList(): Promise<FeedbackItem[]> {
   if (!hasGithubConfig()) {
+    if (isVercelReadonlyRuntime()) {
+      return [];
+    }
     return readLocalList();
   }
 
@@ -174,6 +202,7 @@ export async function appendFeedback(input: NewFeedbackInput): Promise<FeedbackI
   };
 
   if (!hasGithubConfig()) {
+    assertCanPersistWithoutGithub();
     const list = await readLocalList();
     const nextLocalList = [newItem, ...list]
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))

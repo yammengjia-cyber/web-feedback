@@ -40,12 +40,16 @@ export default function Home() {
   }, []);
 
   const layeredItems = useMemo(() => {
-    return items.map((item, index) => ({
-      ...item,
-      lane: index % 5,
-      depth: index % 3,
-      delay: (index % 8) * 0.9,
-    }));
+    return items.map((item, index) => {
+      const idSum = item.id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+      const lane = index % 5;
+      const depth = index % 3;
+      const delay = ((index * 1.41 + idSum % 19) % 26) * 0.55;
+      const driftSec = 21 + (idSum % 11) * 1.15;
+      const staggerY = ((index * 7 + idSum) % 13) - 6;
+      const nudgeX = ((idSum + index * 3) % 11) - 5;
+      return { ...item, lane, depth, delay, driftSec, staggerY, nudgeX };
+    });
   }, [items]);
 
   const resetModal = () => {
@@ -141,6 +145,12 @@ export default function Home() {
           <div
             key={item.id}
             className={["cloud-anchor", `lane-${item.lane}`, `depth-${item.depth}`].join(" ")}
+            style={
+              {
+                "--anchor-y": `${item.staggerY}px`,
+                "--anchor-x": `${item.nudgeX}px`,
+              } as CSSProperties
+            }
           >
             <div
               className={["cloud-drift", item.id === newlyAddedId ? "rising" : ""]
@@ -148,7 +158,8 @@ export default function Home() {
                 .join(" ")}
               style={
                 {
-                  animationDelay: `${item.delay}s`,
+                  "--drift-delay": `${item.delay}s`,
+                  "--drift-duration": `${item.driftSec}s`,
                 } as CSSProperties
               }
             >

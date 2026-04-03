@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
       message.includes("too long") ||
       message.includes("too large") ||
       message.includes("Image must");
-    const status = isClientError ? 400 : 500;
+    const isMissingServerStorage = message.includes("Server storage");
+    const status = isClientError ? 400 : isMissingServerStorage ? 503 : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }
