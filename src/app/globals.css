@@ -1,0 +1,217 @@
+:root {
+  --sky-top: #d8ecff;
+  --sky-mid: #eaf5ff;
+  --sky-bottom: #f6fbff;
+  --cloud-bg: rgba(255, 255, 255, 0.86);
+  --cloud-border: rgba(255, 255, 255, 0.96);
+  --text: #2c4f73;
+  --hint: #54789f;
+  --button: #78aede;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  color: var(--text);
+  background: linear-gradient(180deg, var(--sky-top), var(--sky-mid), var(--sky-bottom));
+}
+
+.sky-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.sun-glow {
+  position: absolute;
+  top: -80px;
+  left: -60px;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 244, 182, 0.66), rgba(255, 244, 182, 0) 68%);
+  pointer-events: none;
+}
+
+.sky-field {
+  position: relative;
+  padding: 5.5rem 1rem 1rem;
+}
+
+.cloud {
+  position: absolute;
+  width: min(var(--cloud-width, 280px), 78vw);
+  min-height: 86px;
+  padding: 1.05rem 1.2rem 1rem;
+  border-radius: 56px;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.94), rgba(224, 240, 255, 0.86));
+  border: 1px solid rgba(235, 246, 255, 0.95);
+  box-shadow:
+    0 14px 28px rgba(68, 105, 138, 0.11),
+    inset 0 -8px 18px rgba(206, 227, 246, 0.38);
+  backdrop-filter: blur(2px);
+  animation: drift 28s linear infinite;
+}
+
+.cloud::before,
+.cloud::after {
+  content: "";
+  position: absolute;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.93), rgba(222, 238, 254, 0.84));
+  border: 1px solid rgba(235, 246, 255, 0.95);
+  border-radius: 999px;
+  box-shadow: inset 0 -5px 10px rgba(206, 227, 246, 0.34);
+}
+
+.cloud::before {
+  width: 74px;
+  height: 60px;
+  left: 10%;
+  top: -24px;
+}
+
+.cloud::after {
+  width: 96px;
+  height: 78px;
+  right: 8%;
+  top: -34px;
+}
+
+.cloud-bumps {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cloud-bumps::before,
+.cloud-bumps::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.91), rgba(217, 236, 253, 0.84));
+  border: 1px solid rgba(236, 247, 255, 0.92);
+}
+
+.cloud-bumps::before {
+  width: 56px;
+  height: 42px;
+  left: 32%;
+  top: -18px;
+}
+
+.cloud-bumps::after {
+  width: 64px;
+  height: 48px;
+  left: 58%;
+  top: -16px;
+}
+
+.cloud p {
+  margin: 0;
+  position: relative;
+  z-index: 1;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cloud.rising {
+  animation: rise 1.6s ease-out;
+}
+
+.lane-0 { top: 10%; }
+.lane-1 { top: 22%; }
+.lane-2 { top: 34%; }
+.lane-3 { top: 46%; }
+.lane-4 { top: 58%; }
+
+.depth-0 { left: -40%; opacity: 0.96; }
+.depth-1 { left: -26%; opacity: 0.88; transform: scale(0.95); }
+.depth-2 { left: -12%; opacity: 0.8; transform: scale(0.9); }
+
+.feedback-bar-wrap {
+  padding: 0.8rem 1rem 1.2rem;
+  background: linear-gradient(180deg, rgba(245, 252, 255, 0), rgba(245, 252, 255, 0.92) 35%);
+}
+
+.hint {
+  margin: 0 0 0.45rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--hint);
+}
+
+.feedback-form {
+  display: flex;
+  gap: 0.6rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(128, 169, 206, 0.32);
+  border-radius: 999px;
+  padding: 0.35rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.feedback-form input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.72rem 0.9rem;
+  font-size: 0.98rem;
+  color: var(--text);
+  outline: none;
+}
+
+.feedback-form button {
+  border: none;
+  border-radius: 999px;
+  background: var(--button);
+  color: #fff;
+  padding: 0.72rem 1.15rem;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.feedback-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status {
+  margin: 0.45rem 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #557da7;
+}
+
+@keyframes drift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(160vw); }
+}
+
+@keyframes rise {
+  0% { transform: translateY(30px); opacity: 0.2; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 720px) {
+  .cloud {
+    width: min(var(--cloud-width, 240px), 86vw);
+    padding: 0.9rem 1rem 0.88rem;
+  }
+  .lane-0 { top: 8%; }
+  .lane-1 { top: 20%; }
+  .lane-2 { top: 32%; }
+  .lane-3 { top: 44%; }
+  .lane-4 { top: 56%; }
+}
