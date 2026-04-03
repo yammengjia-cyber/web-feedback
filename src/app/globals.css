@@ -170,7 +170,7 @@ body {
   inset: 0;
   z-index: 50;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   padding: 1rem;
   background: rgba(44, 79, 115, 0.28);
@@ -182,7 +182,7 @@ body {
   max-width: 420px;
   max-height: min(90vh, 640px);
   overflow: auto;
-  border-radius: 20px 20px 16px 16px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.97);
   border: 1px solid rgba(128, 169, 206, 0.25);
   box-shadow: 0 20px 50px rgba(44, 79, 115, 0.18);
