@@ -32,7 +32,15 @@ export default function Home() {
     const run = async () => {
       try {
         const response = await fetch("/api/feedback", { cache: "no-store" });
-        const data = (await response.json()) as { items: FeedbackItem[] };
+        const data = (await response.json()) as {
+          items?: FeedbackItem[];
+          error?: string;
+        };
+        if (!response.ok) {
+          setStatus(data.error || "Unable to load feedback yet.");
+          setItems([]);
+          return;
+        }
         setItems(data.items || []);
       } catch {
         setStatus("Unable to load feedback yet.");
@@ -178,8 +186,8 @@ export default function Home() {
                       .join(" ")}
                     style={
                       {
-                        "--drift-delay": `${item.delay}s`,
-                        "--drift-duration": `${item.driftSec}s`,
+                        animationDuration: `${item.driftSec}s`,
+                        animationDelay: `${item.delay}s`,
                       } as CSSProperties
                     }
                   >

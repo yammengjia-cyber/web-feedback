@@ -61,32 +61,35 @@ body {
   overflow: hidden;
 }
 
-/* 三行独立容器：每行自己的漂移节奏，避免同列多朵云叠在同一相位 */
+/* 三行独立容器：必须给每行有效高度，否则部分浏览器里绝对定位子项会丢位置，漂移停在屏外被裁切 */
 .sky-lane {
   position: absolute;
   left: 0;
   width: 100%;
+  height: 22%;
   pointer-events: none;
+  overflow: visible;
 }
 
 .sky-lane-0 {
-  top: 14%;
+  top: 10%;
   z-index: 1;
 }
 
 .sky-lane-1 {
-  top: 26%;
+  top: 32%;
   z-index: 2;
 }
 
 .sky-lane-2 {
-  top: 38%;
+  top: 54%;
   z-index: 1;
 }
 
 /* Scale/opacity on anchor; drift only on inner so transforms do not fight */
 .cloud-anchor {
   position: absolute;
+  top: 0;
   left: 0;
   width: 100%;
   display: flex;
@@ -96,10 +99,10 @@ body {
 
 .cloud-drift {
   animation-name: drift;
-  animation-duration: var(--drift-duration, 28s);
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-  animation-delay: var(--drift-delay, 0s);
+  animation-fill-mode: both;
+  /* duration / delay 由内联 style 设置，避免 iOS Safari 对 var() 动画延迟不生效导致整朵云卡在 -100vw */
   display: flex;
   justify-content: center;
 }
@@ -487,16 +490,20 @@ body {
 }
 
 @media (max-width: 720px) {
+  .sky-lane {
+    height: 20%;
+  }
+
   .sky-lane-0 {
-    top: 12%;
+    top: 8%;
   }
 
   .sky-lane-1 {
-    top: 24%;
+    top: 30%;
   }
 
   .sky-lane-2 {
-    top: 36%;
+    top: 52%;
   }
 
   .cloud-body {
