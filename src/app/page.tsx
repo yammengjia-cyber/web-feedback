@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { CSSProperties } from "react";
+import { FEEDBACK_DISPLAY_LIMIT } from "@/constants/feedbackLimits";
 import { parseTagsFromPayload } from "@/lib/parseTags";
 import { FeedbackItem } from "@/types/feedback";
 
@@ -138,7 +139,7 @@ export default function Home() {
         throw new Error(data.error || "Upload failed.");
       }
 
-      setItems((prev) => [data.item!, ...prev].slice(0, 20));
+      setItems((prev) => [data.item!, ...prev].slice(0, FEEDBACK_DISPLAY_LIMIT));
       setNewlyAddedId(data.item.id);
       closeModal();
       setStatus("");

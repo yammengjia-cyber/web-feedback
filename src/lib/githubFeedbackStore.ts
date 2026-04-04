@@ -3,10 +3,23 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeFeedbackList } from "@/lib/normalizeFeedback";
 import { parseTagsFromPayload } from "@/lib/parseTags";
+import {
+  FEEDBACK_DISPLAY_LIMIT,
+  FEEDBACK_MAX_STORED_DEFAULT,
+} from "@/constants/feedbackLimits";
 import { FeedbackItem } from "@/types/feedback";
 
 const DEFAULT_FILE_PATH = "web-feedback-data/feedback.json";
-const MAX_ITEMS = 20;
+
+function maxStoredCount(): number {
+  const raw = process.env.FEEDBACK_MAX_STORED;
+  if (raw === undefined || raw === "") return FEEDBACK_MAX_STORED_DEFAULT;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n >= FEEDBACK_DISPLAY_LIMIT
+    ? n
+    : FEEDBACK_MAX_STORED_DEFAULT;
+}
+
 const MAX_COMMENT_LEN = 500;
 /** Base64 data URL 字符上限（约对应 2.5–2.8MB 原图）；受 Vercel 等请求体 ~4.5MB 限制 */
 const MAX_IMAGE_DATA_URL_CHARS = 3_800_000;
@@ -71,14 +84,14 @@ function getLocalFilePath() {
   return path.join(process.cwd(), filePath);
 }
 
-async function readLocalList(): Promise<FeedbackItem[]> {
+async function readLocalListFull(): Promise<FeedbackItem[]> {
   const localPath = getLocalFilePath();
   try {
     const content = await readFile(localPath, "utf8");
     const parsed = JSON.parse(content) as FeedbackItem[];
-    return normalizeFeedbackList(parsed)
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      .slice(0, MAX_ITEMS);
+    return normalizeFeedbackList(parsed).sort(
+      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+    );
   } catch {
     return [];
   }
@@ -114,30 +127,33 @@ function encodeContent(text: string): string {
 }
 
 export async function getFeedbackList(): Promise<FeedbackItem[]> {
+  let full: FeedbackItem[];
   if (!hasGithubConfig()) {
     if (isVercelReadonlyRuntime()) {
       return [];
     }
-    return readLocalList();
+    full = await readLocalListFull();
+  } else {
+    const { owner, repo, branch, filePath } = getRepoConfig();
+    const path = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
+    const response = await githubRequest(path, { method: "GET" });
+
+    if (response.status === 404) {
+      return [];
+    }
+
+    if (!response.ok) {
+      throw new Error(`GitHub read failed: ${response.status}`);
+    }
+
+    const file = (await response.json()) as RepoFileResponse;
+    const parsed = JSON.parse(decodeContent(file.content)) as FeedbackItem[];
+    full = normalizeFeedbackList(parsed).sort(
+      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+    );
   }
 
-  const { owner, repo, branch, filePath } = getRepoConfig();
-  const path = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
-  const response = await githubRequest(path, { method: "GET" });
-
-  if (response.status === 404) {
-    return [];
-  }
-
-  if (!response.ok) {
-    throw new Error(`GitHub read failed: ${response.status}`);
-  }
-
-  const file = (await response.json()) as RepoFileResponse;
-  const parsed = JSON.parse(decodeContent(file.content)) as FeedbackItem[];
-  return normalizeFeedbackList(parsed)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-    .slice(0, MAX_ITEMS);
+  return full.slice(0, FEEDBACK_DISPLAY_LIMIT);
 }
 
 async function readRawFile(): Promise<{ sha?: string; list: FeedbackItem[] }> {
@@ -202,12 +218,14 @@ export async function appendFeedback(input: NewFeedbackInput): Promise<FeedbackI
     ...(imageDataUrl ? { imageDataUrl } : {}),
   };
 
+  const cap = maxStoredCount();
+
   if (!hasGithubConfig()) {
     assertCanPersistWithoutGithub();
-    const list = await readLocalList();
+    const list = await readLocalListFull();
     const nextLocalList = [newItem, ...list]
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      .slice(0, MAX_ITEMS);
+      .slice(0, cap);
     await writeLocalList(nextLocalList);
     return newItem;
   }
@@ -217,7 +235,7 @@ export async function appendFeedback(input: NewFeedbackInput): Promise<FeedbackI
 
   const nextList = [newItem, ...list]
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-    .slice(0, MAX_ITEMS);
+    .slice(0, cap);
 
   const body = {
     message: "Update feedback list",
