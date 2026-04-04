@@ -118,6 +118,10 @@ function hasBlobConfig() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+function getBlobAccess(): "public" | "private" {
+  return process.env.BLOB_ACCESS === "public" ? "public" : "private";
+}
+
 /**
  * Vercel production/preview runs on a read-only filesystem. Local JSON writes
  * throw EROFS unless we use the GitHub API.
@@ -298,7 +302,7 @@ async function uploadImageAndGetUrl(imageDataUrl: string, feedbackId: string) {
 
   const { mimeType, extension, buffer } = dataUrlToUploadParts(imageDataUrl);
   const blob = await put(`feedback-images/${feedbackId}.${extension}`, buffer, {
-    access: "public",
+    access: getBlobAccess(),
     addRandomSuffix: true,
     contentType: mimeType,
     token: process.env.BLOB_READ_WRITE_TOKEN,
