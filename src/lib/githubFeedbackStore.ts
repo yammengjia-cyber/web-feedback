@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { put } from "@vercel/blob";
 import { normalizeFeedbackList } from "@/lib/normalizeFeedback";
 import { parseTagsFromPayload } from "@/lib/parseTags";
 import {
@@ -26,8 +27,67 @@ const MAX_IMAGE_DATA_URL_CHARS = 3_800_000;
 
 type RepoFileResponse = {
   sha: string;
-  content: string;
+  content?: string;
+  size?: number;
+  message?: string;
+  download_url?: string | null;
 };
+
+function parseGithubContentsJson(text: string, responseStatus: number): RepoFileResponse {
+  if (responseStatus === 404) {
+    throw Object.assign(new Error("NOT_FOUND"), { code: "NOT_FOUND" as const });
+  }
+  let file: RepoFileResponse;
+  try {
+    file = JSON.parse(text) as RepoFileResponse;
+  } catch {
+    throw new Error("GitHub returned invalid JSON for the file request.");
+  }
+  if (!responseStatus.toString().startsWith("2")) {
+    const msg = file.message?.trim();
+    throw new Error(
+      msg
+        ? `GitHub API (${responseStatus}): ${msg}`
+        : `GitHub API error: ${responseStatus}`,
+    );
+  }
+  return file;
+}
+
+async function loadFeedbackArrayFromRepoFile(
+  file: RepoFileResponse,
+): Promise<FeedbackItem[]> {
+  let jsonText: string;
+  if (file.content && typeof file.content === "string") {
+    jsonText = decodeContent(file.content);
+  } else if (file.download_url) {
+    const response = await fetch(file.download_url, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Could not download feedback.json from GitHub raw URL (${response.status}).`);
+    }
+    jsonText = await response.text();
+  } else {
+    const sizeHint =
+      typeof file.size === "number" ? ` (reported size ${file.size} bytes)` : "";
+    throw new Error(
+      `feedback.json is too large for GitHub's Contents API (max ~1 MB per response)${sizeHint}. ` +
+        `Please move images out of JSON (Blob), lower FEEDBACK_MAX_STORED, or remove old "imageDataUrl" fields.`,
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error(
+      "Could not parse feedback.json in the repo (invalid JSON).",
+    );
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error("feedback.json in the repo must be a JSON array.");
+  }
+  return normalizeFeedbackList(parsed as FeedbackItem[]);
+}
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -54,6 +114,10 @@ function hasGithubConfig() {
   );
 }
 
+function hasBlobConfig() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
 /**
  * Vercel production/preview runs on a read-only filesystem. Local JSON writes
  * throw EROFS unless we use the GitHub API.
@@ -72,6 +136,8 @@ function isVercelReadonlyRuntime() {
 
 const MISSING_GITHUB_ON_VERCEL_MSG =
   "Server storage is not configured. In Vercel → Project → Settings → Environment Variables, add GITHUB_TOKEN, GITHUB_REPO_OWNER, and GITHUB_REPO_NAME (and optionally GITHUB_REPO_BRANCH, FEEDBACK_FILE_PATH), then redeploy.";
+const MISSING_BLOB_MSG =
+  "Image storage is not configured. In Vercel → Storage, create/connect Blob, then redeploy so BLOB_READ_WRITE_TOKEN is available.";
 
 function assertCanPersistWithoutGithub() {
   if (isVercelReadonlyRuntime()) {
@@ -137,18 +203,19 @@ export async function getFeedbackList(): Promise<FeedbackItem[]> {
     const { owner, repo, branch, filePath } = getRepoConfig();
     const path = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
     const response = await githubRequest(path, { method: "GET" });
+    const text = await response.text();
 
-    if (response.status === 404) {
-      return [];
+    let file: RepoFileResponse;
+    try {
+      file = parseGithubContentsJson(text, response.status);
+    } catch (e) {
+      if (e instanceof Error && (e as Error & { code?: string }).code === "NOT_FOUND") {
+        return [];
+      }
+      throw e;
     }
 
-    if (!response.ok) {
-      throw new Error(`GitHub read failed: ${response.status}`);
-    }
-
-    const file = (await response.json()) as RepoFileResponse;
-    const parsed = JSON.parse(decodeContent(file.content)) as FeedbackItem[];
-    full = normalizeFeedbackList(parsed).sort(
+    full = (await loadFeedbackArrayFromRepoFile(file)).sort(
       (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
     );
   }
@@ -160,17 +227,19 @@ async function readRawFile(): Promise<{ sha?: string; list: FeedbackItem[] }> {
   const { owner, repo, branch, filePath } = getRepoConfig();
   const path = `/repos/${owner}/${repo}/contents/${encodeURIComponent(filePath)}?ref=${encodeURIComponent(branch)}`;
   const response = await githubRequest(path, { method: "GET" });
+  const text = await response.text();
 
-  if (response.status === 404) {
-    return { list: [] };
-  }
-  if (!response.ok) {
-    throw new Error(`GitHub read failed: ${response.status}`);
+  let file: RepoFileResponse;
+  try {
+    file = parseGithubContentsJson(text, response.status);
+  } catch (e) {
+    if (e instanceof Error && (e as Error & { code?: string }).code === "NOT_FOUND") {
+      return { list: [] };
+    }
+    throw e;
   }
 
-  const file = (await response.json()) as RepoFileResponse;
-  const parsed = JSON.parse(decodeContent(file.content)) as FeedbackItem[];
-  return { sha: file.sha, list: normalizeFeedbackList(parsed) };
+  return { sha: file.sha, list: await loadFeedbackArrayFromRepoFile(file) };
 }
 
 export type NewFeedbackInput = {
@@ -189,6 +258,52 @@ function validateImageDataUrl(url: string) {
   if (url.length > MAX_IMAGE_DATA_URL_CHARS) {
     throw new Error("Image is too large. Try a photo under about 2.8 MB.");
   }
+}
+
+function dataUrlToUploadParts(url: string) {
+  const match = url.match(/^data:(image\/[a-z0-9.+-]+(?:-[a-z0-9.+-]+)?);base64,(.+)$/i);
+  if (!match) {
+    throw new Error("Image must be JPEG, PNG, WebP, or HEIC/HEIF (iPhone photos).");
+  }
+
+  const mimeType = match[1].toLowerCase();
+  const base64 = match[2];
+  const extension =
+    mimeType === "image/jpeg" || mimeType === "image/jpg"
+      ? "jpg"
+      : mimeType === "image/png"
+        ? "png"
+        : mimeType === "image/webp"
+          ? "webp"
+          : mimeType.includes("heic")
+            ? "heic"
+            : mimeType.includes("heif")
+              ? "heif"
+              : "img";
+
+  return {
+    mimeType,
+    extension,
+    buffer: Buffer.from(base64, "base64"),
+  };
+}
+
+async function uploadImageAndGetUrl(imageDataUrl: string, feedbackId: string) {
+  if (!hasBlobConfig()) {
+    if (isVercelReadonlyRuntime() || hasGithubConfig()) {
+      throw new Error(MISSING_BLOB_MSG);
+    }
+    return undefined;
+  }
+
+  const { mimeType, extension, buffer } = dataUrlToUploadParts(imageDataUrl);
+  const blob = await put(`feedback-images/${feedbackId}.${extension}`, buffer, {
+    access: "public",
+    addRandomSuffix: true,
+    contentType: mimeType,
+    token: process.env.BLOB_READ_WRITE_TOKEN,
+  });
+  return blob.url;
 }
 
 export async function appendFeedback(input: NewFeedbackInput): Promise<FeedbackItem> {
@@ -210,12 +325,16 @@ export async function appendFeedback(input: NewFeedbackInput): Promise<FeedbackI
     imageDataUrl = input.imageDataUrl.trim();
   }
 
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const imageUrl = imageDataUrl ? await uploadImageAndGetUrl(imageDataUrl, id) : undefined;
+  const canInlineImageLocally = Boolean(imageDataUrl && !hasBlobConfig() && !hasGithubConfig());
+
   const newItem: FeedbackItem = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id,
     tags,
     comment,
     createdAt: new Date().toISOString(),
-    ...(imageDataUrl ? { imageDataUrl } : {}),
+    ...(imageUrl ? { imageUrl } : canInlineImageLocally ? { imageDataUrl } : {}),
   };
 
   const cap = maxStoredCount();

@@ -35,9 +35,13 @@ export default function Home() {
         const data = (await response.json()) as {
           items?: FeedbackItem[];
           error?: string;
+          detail?: string;
         };
         if (!response.ok) {
-          setStatus(data.error || "Unable to load feedback yet.");
+          const parts = [data.error, data.detail].filter(
+            (s): s is string => Boolean(s && String(s).trim()),
+          );
+          setStatus(parts.length ? parts.join(" — ") : "Unable to load feedback yet.");
           setItems([]);
           return;
         }

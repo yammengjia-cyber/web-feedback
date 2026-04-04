@@ -5,8 +5,10 @@ export type FeedbackItem = {
   tags: string[];
   /** Stored for admin / JSON; not shown on clouds */
   comment: string;
-  /** Optional; stored in JSON only, not shown on clouds */
+  /** Optional legacy inline image payload; kept only for older records */
   imageDataUrl?: string;
+  /** Preferred image storage: Vercel Blob or other hosted URL */
+  imageUrl?: string;
   /** Legacy single tag */
   tag?: string;
   /** Legacy single text field */

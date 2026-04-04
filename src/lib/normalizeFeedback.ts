@@ -21,10 +21,12 @@ function collectTags(raw: FeedbackItem): string[] {
 export function normalizeFeedbackItem(raw: FeedbackItem): FeedbackItem {
   const tags = collectTags(raw);
   const comment = (raw.comment ?? raw.text ?? "").trim();
+  const imageUrl = typeof raw.imageUrl === "string" ? raw.imageUrl.trim() : undefined;
   return {
     ...raw,
     tags,
     comment: comment.length > 0 ? comment : tags.join(", "),
+    ...(imageUrl ? { imageUrl } : {}),
   };
 }
 
